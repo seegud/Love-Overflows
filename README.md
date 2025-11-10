@@ -163,3 +163,8 @@ const messages = [
   - 手提包延迟出现：搜索 `bag-visible` 或 `3000`。
   - 吸入动画：搜索 `absorbIntoBag`。
   - 点击手提包：搜索 `handbag.addEventListener('click'`。
+
+## 其他
+- 图标来自 https://igoutu.cn/icons
+- 示例图片博主 抖音 https://v.douyin.com/IUvAOuo6fSA/
+- 网页作者 seegood https://explore.seegood.top/
