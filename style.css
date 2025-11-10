@@ -1,0 +1,215 @@
+:root {
+  --bg-1: #fff5f7;
+  --bg-2: #ffe9f1;
+  --popup-bg: #ffffffcc;
+  --popup-border: #ff8fb3;
+  --text: #3d2b3d;
+  --popup-duration: 12s;  /* 弹窗显示时长：改这里（例如 15s / 10s / 8s） */
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "PingFang SC", "Microsoft Yahei", "Noto Sans CJK", Arial, sans-serif;
+  color: var(--text);
+  background: radial-gradient(1200px 800px at 20% 10%, var(--bg-2), var(--bg-1)),
+              radial-gradient(1000px 900px at 80% 90%, #fff, var(--bg-1));
+  overflow: hidden;
+}
+
+#popups-root {
+  position: fixed;
+  inset: 0;
+  /* 允许弹窗接收指针事件以支持拖拽 */
+  pointer-events: auto;
+}
+
+.popup {
+  position: fixed;
+  z-index: 10;
+  min-width: 200px;
+  max-width: 320px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: var(--popup-bg);
+  backdrop-filter: blur(6px) saturate(1.2);
+  border: 1px solid color-mix(in oklab, var(--popup-border) 55%, #fff 45%);
+  box-shadow: 0 10px 24px rgba(255, 105, 180, 0.25);
+  font-size: 16px;
+  line-height: 1.45;
+  /* 允许拖拽交互 */
+  pointer-events: auto;
+  cursor: grab;
+  touch-action: none; /* 禁止浏览器默认手势，便于拖拽 */
+  /* 显示时长由 --popup-duration 控制 */
+  animation: popupLife var(--popup-duration) ease-in-out forwards,
+             floaty    var(--popup-duration) ease-in-out forwards;
+  will-change: transform, opacity;
+}
+
+/* 拖拽中：暂停动画，避免与位移冲突 */
+.popup.dragging {
+  animation-play-state: paused;
+  cursor: grabbing;
+  z-index: 50; /* 拖拽时层级最高，压过其他弹窗与手提包 */
+}
+
+.popup.dragging, .popup.dragging * {
+  user-select: none; /* 拖拽时避免文字被选中 */
+}
+
+/* 被手提包“收纳”时的过渡：缩小并淡出到手提包中心 */
+.popup.absorbed {
+  animation: none !important; /* 停止原动画，避免触发 animationend */
+  pointer-events: none;
+  transition: left 0.45s ease, top 0.45s ease, transform 0.45s ease, opacity 0.45s ease;
+}
+
+/* 底部居中的手提包 */
+#handbag {
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  width: 96px;
+  height: 96px;
+  transform: translateX(-50%) scale(0.6); /* 初始较小 */
+  background: url('images/handbag.png') center / contain no-repeat;
+  filter: drop-shadow(0 6px 14px rgba(0,0,0,0.18));
+  transition: transform 0.26s ease, filter 0.26s ease, opacity 0.26s ease;
+  z-index: 20; /* 位于弹窗之上 */
+  pointer-events: auto; /* 可点击以触发吸纳所有弹窗 */
+  opacity: 0; /* 初始不可见，稍后显示 */
+}
+
+/* 3s 后显示：放大到正常尺寸并淡入 */
+#handbag.bag-visible {
+  transform: translateX(-50%) scale(1);
+  opacity: 0.95;
+}
+
+/* 手提包被“瞄准”时放大 */
+#handbag.bag-active {
+  transform: translateX(-50%) scale(1.15);
+  filter: drop-shadow(0 12px 22px rgba(0,0,0,0.28));
+}
+
+/* 手提包庆祝效果：轻微抖动 + 闪光 */
+#handbag::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 18px;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(circle at 50% 40%, rgba(255,255,255,0.9), rgba(255,255,255,0) 60%);
+  filter: blur(5px);
+}
+#handbag.celebrate {
+  animation: bagShake 0.45s ease;
+}
+#handbag.celebrate::after {
+  animation: flashOverlay 0.45s ease;
+}
+
+@keyframes bagShake {
+  0%   { transform: translateX(-50%) scale(1.04) rotate(0deg); }
+  20%  { transform: translateX(-50%) scale(1.06) rotate(-2deg); }
+  40%  { transform: translateX(-50%) scale(1.06) rotate(2deg); }
+  60%  { transform: translateX(-50%) scale(1.05) rotate(-1.5deg); }
+  80%  { transform: translateX(-50%) scale(1.05) rotate(1.5deg); }
+  100% { transform: translateX(-50%) scale(1.04) rotate(0deg); }
+}
+
+@keyframes flashOverlay {
+  0%   { opacity: 0; }
+  20%  { opacity: 0.9; }
+  100% { opacity: 0; }
+}
+
+/* 手提包提示文字：鼠标悬停时在手提包正下方显示 “我收到啦” */
+#handbag-note {
+  position: fixed;
+  left: 50%;
+  bottom: 4px; /* 比手提包更靠下（handbag bottom: 18px） */
+  transform: translateX(-50%) translateY(6px);
+  padding: 6px 10px;
+  font-size: 14px;
+  color: var(--text);
+  background: #ffffffdd;
+  border: 1px solid color-mix(in oklab, var(--popup-border) 55%, #fff 45%);
+  border-radius: 12px;
+  box-shadow: 0 8px 16px rgba(255, 105, 180, 0.25);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 19; /* 低于手提包（20），不会遮挡手提包 */
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+#handbag:hover ~ #handbag-note {
+  opacity: 0.95;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* 图文布局：图片在前，文字在后 */
+.popup-content {
+  display: flex;
+  align-items: center;
+  gap: 10px; /* 调整图文间距 */
+}
+
+/* 图片缩略图大小与外观 */
+.popup .thumb {
+  width: 44px;   /* 调整图片尺寸：改宽高即可 */
+  height: 44px;
+  flex: 0 0 44px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in oklab, var(--popup-border) 40%, #fff 60%);
+  object-fit: cover;
+  box-shadow: 0 4px 10px rgba(255, 105, 180, 0.25);
+}
+
+.popup::before {
+  content: "❤";
+  position: absolute;
+  left: -8px;
+  top: -10px;
+  font-size: 18px;
+  color: #ff6b9f;
+  filter: drop-shadow(0 2px 2px rgba(255, 105, 180, 0.35));
+}
+
+/* 弹窗在手提包上方时：置顶并轻微缩小 */
+.popup.over-bag {
+  z-index: 30; /* 高于手提包（z-index: 20） */
+  box-shadow: 0 12px 28px rgba(255, 105, 180, 0.38);
+}
+
+/* 将缩放应用到内部内容，避免与父级动画 transform 冲突 */
+.popup.over-bag .popup-content {
+  transform: scale(0.88);
+  transition: transform 0.12s ease;
+}
+
+@keyframes popupLife {
+  0%   { opacity: 0; transform: translateY(6px) scale(0.92); }
+  10%  { opacity: 1; transform: translateY(0)   scale(1); }
+  80%  { opacity: 1; transform: translateY(-6px) scale(1.02); }
+  100% { opacity: 0; transform: translateY(-12px) scale(0.98); }
+}
+
+@keyframes floaty {
+  0%   { filter: drop-shadow(0 6px 12px rgba(255, 105, 180, 0.15)); }
+  50%  { filter: drop-shadow(0 12px 28px rgba(255, 105, 180, 0.28)); }
+  100% { filter: drop-shadow(0 8px 16px rgba(255, 105, 180, 0.18)); }
+}
+
+/* 小屏幕微调 */
+@media (max-width: 480px) {
+  .popup { font-size: 15px; padding: 10px 14px; max-width: 88vw; }
+  .popup .thumb { width: 40px; height: 40px; flex-basis: 40px; }
+}
